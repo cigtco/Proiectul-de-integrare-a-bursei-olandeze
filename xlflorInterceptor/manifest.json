@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+  "name": "xlFlorInterceptor",
+  "version": "1.0",
+
+  "description": "XLFlor functionality extention",
+  "icons": { "16": "icon16.png"},
+
+  "background": {
+    "scripts": ["constants.js","jquery-3.4.1.min.js"],
+    "persistent": true
+  },
+  "permissions": [
+    "storage",
+    "https://shop.xlfor.com/*",
+    "https://script.google.com/*",
+    "https://api.xlflor.com/*"
+	],
+  "version_name": "Test",
+  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
+}

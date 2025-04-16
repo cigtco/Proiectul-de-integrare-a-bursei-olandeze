@@ -1,0 +1,28 @@
+<script id="tpl-order" type="text/html">
+	<div class="col-sm">
+	    <table class="table-sm table-bordered table-striped">
+		    <thead>
+		    	<th>Select</th>
+		        <th>Order</th>
+		        <th>Count</th>
+		        <th>Total Price</th>
+		        <th>Date</th>
+		        <th>Status</th>
+		    </thead>
+		    <tbody>
+		        {{#orders}}
+		        <tr class="color-select data-row" date="{{date.date}}">
+		        	<td><input type="checkbox" class="sync-chkbx" orderId="{{id}}"></input></td>
+		        	<td>{{title}}</td>
+		        	<td>{{variantCount}}</td>
+		        	<td>{{totalPrice}} {{currency1.symbol}}</td>
+		        	<td>{{date.date}}</td>
+		        	<td>{{#isClosed}}Closed{{/isClosed}}
+						{{^isClosed}}Open{{/isClosed}}
+					</td>
+	        	</tr>
+		        {{/orders}}
+	        </tbody>
+	    </table>
+   	</div>	
+</script>

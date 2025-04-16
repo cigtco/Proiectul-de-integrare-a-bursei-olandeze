@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+	<head><title>Fleura Sync Page</title></head>
+	<script src="jquery-3.4.1.min.js"></script>
+	<link rel="stylesheet" href="css/bootstrap.min.css">
+	<link rel="stylesheet" href="css/bootstrap-toggle.min.css">
+	<script src="mustache.js"></script>
+	<script src="constants.js"></script>
+	<script src="js/bootstrap-toggle.min.js"></script>
+	<body>
+		<div id="main" class="container">
+			<h1 class="header">Orders</h1>	
+			<div class="container">
+				<button id="syncOrders" class="btn btn-secondary">Refresh</button>
+				<button id="syncToGoogle" class="btn btn-secondary">Save To Google</button>
+				<input id="autoSync" type="checkbox" data-toggle="toggle" data-on="Auto sync on" data-off="Auto sync off" data-onstyle="success" data-offstyle="danger">
+				<label for="order-date">Date:
+					<input type="date" id="order-date" name="order-date" min="2018-01-01">
+		       	</label>
+		       	<label for="shop-type">Shop:
+					<select id="shop-type" name="shop-type">
+					  <option value="empty"></option>
+					  <option value="R">CITY-R</option>
+					</select>
+		       	</label>
+		       	<label for="sync-interval">Sync Interval:
+					<select id="sync-interval" name="sync-interval">
+					  <option value="1">1 sec</option>
+					  <option value="2">2 sec</option>
+					  <option value="5">5 sec</option>
+					  <option value="10">10 sec</option>
+					  <option value="20">20 sec</option>
+					  <option value="30">30 sec</option>
+					</select>
+		       	</label>
+			</div>
+			<div id="autoSyncDiv" class="container">
+			</div>
+			<div id="data" class="container">
+			</div>
+		</div>
+	</body>
+	<script src="options.js"></script>
+</html>
