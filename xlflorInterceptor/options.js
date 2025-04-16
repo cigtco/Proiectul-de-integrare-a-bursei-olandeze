@@ -1,115 +1,148 @@
-const shops = [
-  {
-    id: 35080,
-    title: "CITY-R",
-    type: "R",
-    credentials: {
-      password: "evamaria25",
-      rememberMe: true,
-      user: "CITY"
+var oldOrders = [];
+
+$(document).ready(function(){
+  $("#shop-type").prop("value",localStorage["shopType"]);
+  $('#order-date').prop("value",localStorage["orderDate"]);
+  $('#sync-interval').prop("value",localStorage["syncInterval"]);
+  syncOrders();
+});
+
+//Event handlers
+$("#syncOrders").click(syncOrders);
+$("#syncToGoogle").click(function(){
+  $(".sync-chkbx").each(function(index){
+    if($(this).prop("checked")){
+      fetch(fleuraOrderURL + "&order=" + $(this).attr("orderId"),fetchOptions)
+        .then(resp => resp.json())
+        .then(data => makeRequest(data,"order"))
+        .catch((error) => {
+          console.log("Error while syncing to google drive: " + error);
+        });
     }
-  },
-  {
-    id: 53200,
-    title: "CITY-D",
-    type: "R",
-    credentials: {
-      password: "evamaria25",
-      rememberMe: true,
-      user: "CITY"
-    }
-  },
-  {
-    id: 81083,
-    title: "X=CITY",
-    type: "R",
-    credentials: {
-      password: "evamaria25",
-      rememberMe: true,
-      user: "CITY"
-    }
-  },
-  {
-    id: 53296,
-    title: "CITY-P",
-    type: "R",
-    credentials: {
-      password: "evamaria25",
-      rememberMe: true,
-      user: "CITY"
-    }
-  },
-  {
-    id: 145258,
-    title: "CITY-DU",
-    type: "R",
-    credentials: {
-      password: "evamaria25",
-      rememberMe: true,
-      user: "CITY"
-    }
-  },
-  {
-    id: 141803,
-    title: "CITY-KOA",
-    type: "R",
-    credentials: {
-      password: "evamaria25",
-      rememberMe: true,
-      user: "CITY"
-    }
-  },
-  {
-    id: 141804,
-    title: "CITY-KOP",
-    type: "R",
-    credentials: {
-      password: "evamaria25",
-      rememberMe: true,
-      user: "CITY"
-    }
+  });
+})
+$("#shop-type").change(function(){
+  localStorage["shopType"] = $("#shop-type").prop("value");
+});
+$('#order-date').change(function(){
+  localStorage["orderDate"] = $('#order-date').prop("value");
+  syncOrders();
+});
+$('#sync-interval').change(function(){
+  localStorage["syncInterval"] = $('#sync-interval').prop("value");
+});
+$('#autoSync').change(function() {
+
+  if(!validateOrderDate()){
+    alert("Select date!");
+    return;
   }
-];
+  if($(this).prop('checked'))
+    sessionStorage["autoSyncOrdersId"] = setInterval(autoSyncOrders,$('#sync-interval').prop("value")*1000);
+  else
+    clearInterval(sessionStorage["autoSyncOrdersId"]);
+})
 
-const RShops = ["CITY-R", "X=CITY", "CITY-D", "CITY-P", "CITY-DU", "CITY-KOA", "CITY-KOP"];
+function makeRequest(data,requestType) {
+    //var url = "https://script.google.com/macros/s/AKfycbwgxD39YH50DphH2lBaGVE-dTfndofB_CxR4623URCfJNc89dmgdr5G1aBrTviWceJE/exec?";
+    var url = "https://";
+    url = url +"requestType=" + requestType;
+    var request = jQuery.post(url, JSON.stringify(data),
+        (data) => {
+            console.log("Response: " + data);
+        },
+        "text");
+}
 
-const fetchOptions = {
-  headers: {
-    accept: "application/json",
-    "accept-language": "en-US,en;q=0.9",
-    "sec-ch-ua": '"Opera";v="77", "Chromium";v="91", ";Not A Brand";v="99"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-site"
-  },
-  referrer: "https://shop.xlflor.com/",
-  referrerPolicy: "strict-origin-when-cross-origin",
-  body: null,
-  method: "GET",
-  mode: "cors",
-  credentials: "include"
-};
+function syncOrders(){
+  $("#data").empty();
+  shops.forEach(async function(shop){
+    if(shop.type == localStorage["shopType"]){
+      let response = await fetch(fleuraOrdersURL + "&shop=" + shop.id,fetchOptions).catch();
 
-const fetchOptionsLogin = {
-  headers: {
-    accept: "*/*",
-    "accept-language": "en-US,en;q=0.9,hu-HU;q=0.8,hu;q=0.7,ro-RO;q=0.6,ro;q=0.5",
-    "content-type": "application/json",
-    "sec-ch-ua": '"Chromium";v="92", "Not A;Brand";v="99", "Google Chrome";v="92"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-fetch-dest": "empty",
-    "sec-fetch-mode": "cors",
-    "sec-fetch-site": "same-site"
-  },
-  referrer: "https://shop.xlflor.com/",
-  referrerPolicy: "strict-origin-when-cross-origin",
-  body: null,
-  method: "POST",
-  mode: "cors",
-  credentials: "include"
-};
+      //if not logged in, status is 439
+      if(response.status == 439){
+        await login(shop);
+        response = await fetch(fleuraOrdersURL + "&shop=" + shop.id,fetchOptions);
+      }
+      let orders = await response.json();
+      let resTemplates = await fetch("templates.htm");
+      let templates = await resTemplates.text();
+      template = $(templates).filter('#tpl-order').html();
+      myOrders = orders.closedOrders.concat(orders.openOrders);
+      if(validateOrderDate())
+        myOrders = myOrders.filter(function(order){
+          return order.date.date == localStorage["orderDate"];
+        });
+      if(Array.isArray(myOrders) && myOrders.length){
+        $("#data").append("<div class='container'>");
+        $("#data").append("<h4>" + shop.title + "</h4>");
+        $('#data').append(Mustache.render(template,{orders:myOrders,shop:shop.title}));
+        $("#data").append("</div>");
+      }
+    }
+  })
+}
 
-const fleuraOrdersURL = "https://api.xlflor.com/orders?start=&end=&origin=https%3A%2F%2Fshop.xlflor.com%2Forders";
-const fleuraOrderURL = "https://api.xlflor.com/order?allowPartialVariants=true&origin=https%3A%2F%2Fshop.xlflor.com%2Forder%2F2706933%3Fclosed%3Dtrue";
-const fleuraLoginURL = "https://api.xlflor.com/simple-sign-in?origin=https://shop.xlflor.com/login?redirect=/dashboard";
+function autoSyncOrders(){
+  shops.forEach(async function(shop){
+    if(shop.type == localStorage["shopType"]){
+      let response = await fetch(fleuraOrdersURL + "&shop=" + shop.id,fetchOptions);
+      
+      //if not logged in, status is 439
+      if(response.status == 439){
+        await login(shop);
+        response = await fetch(fleuraOrdersURL + "&shop=" + shop.id,fetchOptions);
+      }
+
+      let orders = await response.json();
+
+      myOrders = orders.closedOrders.concat(orders.openOrders);
+
+      if(validateOrderDate()){
+        myOrders = myOrders.filter(function(order){
+          var foundOrder = oldOrders.find(function(oldOrder){
+            return oldOrder.id == this;
+          },order.id)
+
+          if(foundOrder != undefined)
+            return order.date.date == localStorage["orderDate"] &&
+                   (order.variantCount != foundOrder.variantCount || 
+                    order.totalPrice != foundOrder.totalPrice);
+          else
+            return order.date.date == localStorage["orderDate"];  
+        });
+
+        if(myOrders.length){
+          oldOrders = [];
+
+          myOrders.forEach(async function(order){
+            fetch(fleuraOrderURL + "&order=" + order.id,fetchOptions)
+            .then(resp => resp.json())
+            .then(data => {
+              makeRequest(data,"order");
+              oldOrders.push(data.order);
+            })
+            .catch((error) => {
+              console.log("Error while syncing to google drive: " + error);
+            });
+          });
+        }
+      }
+    }
+  })
+}
+
+function validateOrderDate(){
+  return localStorage["orderDate"] != undefined && localStorage["orderDate"] != "";
+}
+
+async function login(shop){
+  //load empty fetchOptionsLogin then set credentials for specific shop
+  fOptions = fetchOptionsLogin;
+  fOptions.body = shop.credentials;
+
+  //login
+  await fetch(fleuraLoginURL,fOptions);
+}
+
