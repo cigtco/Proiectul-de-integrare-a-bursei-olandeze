@@ -1,45 +1,45 @@
 const shops = [
 	{
-		id:85595,
-		title:"GABOR-R",
+		id:35080,
+		title:"CITY-R",
 		type:"R",
 		credentials:"{\"password\":\"*pass*\",\"rememberMe\":true,\"user\":\"email@domain.com\"}"
 	},{
-		id:85596,
-		title:"X=GABOR",
+		id:53200,
+		title:"CITY-D",
 		type:"R",
 		credentials:"{\"password\":\"*pass*\",\"rememberMe\":true,\"user\":\"email@domain.com\"}"
 	},{
-		id: 85601,
-		title:"GABOR-D",
+		id: 81083,
+		title:"X=CITY",
 		type:"R",
 		credentials:"{\"password\":\"*pass*\",\"rememberMe\":true,\"user\":\"email@domain.com\"}"
 	},{
-		id:86837,
-		title:"GABOR-P",
+		id:53296,
+		title:"CITY-P",
 		type:"R",
 		credentials:"{\"password\":\"*pass*\",\"rememberMe\":true,\"user\":\"email@domain.com\"}"
 	},{
-		id:137152,
-		title:"GABOR-DU",
+		id:145258,
+		title:"CITY-DU",
 		type:"R",
 		credentials:"{\"password\":\"*pass*\",\"rememberMe\":true,\"user\":\"email@domain.com\"}"
 	},{
-		id:141793,
-		title:"GABORKOA",
+		id:141803,
+		title:"CITY-KOA",
 		type:"R",
 		credentials:"{\"password\":\"*pass*\",\"rememberMe\":true,\"user\":\"email@domain.com\"}"
 	},{
-		id:141794,
-		title:"GABORKOP",
+		id:141804,
+		title:"CITY-KOP",
 		type:"R",
 		credentials:"{\"password\":\"*pass*\",\"rememberMe\":true,\"user\":\"email@domain.com\"}"
 	}
 ]
 
-const RShops = ["GABOR-R","X=GABOR","GABOR-D","GABOR-P,","GABOR-DU"];
+const RShops = ["CITY-R","X=CITY","CITY-D","CITY-P,","CITY-DU","CITY-KOA","CITY-KOP"];
 
-const CAShops = ["GAB-CA","GAB-CA-P","GABCA-DU"];
+//const CAShops = ["GAB-CA","GAB-CA-P","GABCA-DU"];
 
 const fetchOptions = {
 	"headers": {
