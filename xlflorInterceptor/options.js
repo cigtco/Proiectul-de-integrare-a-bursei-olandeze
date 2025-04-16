@@ -1,147 +1,141 @@
-var oldOrders = [];
+const oldOrders = [];
+const fleuraOrdersURL = "https://api.xlflor.com/orders?start=&end=&origin=https%3A%2F%2Fshop.xlflor.com%2Forders";
+const fleuraOrderURL = "https://api.xlflor.com/order?allowPartialVariants=true&origin=https%3A%2F%2Fshop.xlflor.com%2Forder%2F2706933%3Fclosed%3Dtrue";
+const fleuraLoginURL = "https://api.xlflor.com/simple-sign-in?origin=https://shop.xlflor.com/login?redirect=/dashboard";
 
-$(document).ready(function(){
-  $("#shop-type").prop("value",localStorage["shopType"]);
-  $('#order-date').prop("value",localStorage["orderDate"]);
-  $('#sync-interval').prop("value",localStorage["syncInterval"]);
+$(document).ready(function () {
+  // Initialize UI with saved settings
+  $("#shop-type").val(localStorage["shopType"]);
+  $("#order-date").val(localStorage["orderDate"]);
+  $("#sync-interval").val(localStorage["syncInterval"]);
   syncOrders();
 });
 
-//Event handlers
+// Event Handlers
 $("#syncOrders").click(syncOrders);
-$("#syncToGoogle").click(function(){
-  $(".sync-chkbx").each(function(index){
-    if($(this).prop("checked")){
-      fetch(fleuraOrderURL + "&order=" + $(this).attr("orderId"),fetchOptions)
+$("#syncToGoogle").click(syncToGoogle);
+$("#shop-type").change(() => localStorage["shopType"] = $("#shop-type").val());
+$("#order-date").change(() => {
+  localStorage["orderDate"] = $("#order-date").val();
+  syncOrders();
+});
+$("#sync-interval").change(() => localStorage["syncInterval"] = $("#sync-interval").val());
+$("#autoSync").change(toggleAutoSync);
+
+// Function to sync orders
+async function syncOrders() {
+  $("#data").empty();
+  for (const shop of shops) {
+    if (shop.type === localStorage["shopType"]) {
+      try {
+        let response = await fetchOrdersForShop(shop);
+        let orders = await response.json();
+        let templates = await fetch("templates.htm").then(res => res.text());
+        let template = $(templates).filter("#tpl-order").html();
+
+        let myOrders = [...orders.closedOrders, ...orders.openOrders];
+        if (validateOrderDate()) {
+          myOrders = myOrders.filter(order => order.date.date === localStorage["orderDate"]);
+        }
+
+        if (myOrders.length) {
+          $("#data").append(`<div class='container'><h4>${shop.title}</h4></div>`);
+          $("#data").append(Mustache.render(template, { orders: myOrders, shop: shop.title }));
+        }
+      } catch (error) {
+        console.error(`Error syncing orders for shop ${shop.title}:`, error);
+      }
+    }
+  }
+}
+
+// Function to fetch orders for a specific shop
+async function fetchOrdersForShop(shop) {
+  let response = await fetch(`${fleuraOrdersURL}&shop=${shop.id}`, fetchOptions);
+  if (response.status === 439) {
+    await login(shop); // Login if not authenticated
+    response = await fetch(`${fleuraOrdersURL}&shop=${shop.id}`, fetchOptions);
+  }
+  return response;
+}
+
+// Function to sync orders to Google Drive
+function syncToGoogle() {
+  $(".sync-chkbx").each(function () {
+    if ($(this).prop("checked")) {
+      const orderId = $(this).attr("orderId");
+      fetch(`${fleuraOrderURL}&order=${orderId}`, fetchOptions)
         .then(resp => resp.json())
-        .then(data => makeRequest(data,"order"))
-        .catch((error) => {
-          console.log("Error while syncing to google drive: " + error);
-        });
+        .then(data => makeRequest(data, "order"))
+        .catch(error => console.error("Error syncing to Google Drive:", error));
     }
   });
-})
-$("#shop-type").change(function(){
-  localStorage["shopType"] = $("#shop-type").prop("value");
-});
-$('#order-date').change(function(){
-  localStorage["orderDate"] = $('#order-date').prop("value");
-  syncOrders();
-});
-$('#sync-interval').change(function(){
-  localStorage["syncInterval"] = $('#sync-interval').prop("value");
-});
-$('#autoSync').change(function() {
+}
 
-  if(!validateOrderDate()){
+// Function to toggle auto-sync
+function toggleAutoSync() {
+  if (!validateOrderDate()) {
     alert("Select date!");
     return;
   }
-  if($(this).prop('checked'))
-    sessionStorage["autoSyncOrdersId"] = setInterval(autoSyncOrders,$('#sync-interval').prop("value")*1000);
-  else
+  if ($("#autoSync").prop("checked")) {
+    sessionStorage["autoSyncOrdersId"] = setInterval(autoSyncOrders, $("#sync-interval").val() * 1000);
+  } else {
     clearInterval(sessionStorage["autoSyncOrdersId"]);
-})
-
-function makeRequest(data,requestType) {
-    var url = "https://script.google.com/macros/s/AKfycbwgxD39YH50DphH2lBaGVE-dTfndofB_CxR4623URCfJNc89dmgdr5G1aBrTviWceJE/exec?";
-    url = url +"requestType=" + requestType;
-    var request = jQuery.post(url, JSON.stringify(data),
-        (data) => {
-            console.log("Response: " + data);
-        },
-        "text");
+  }
 }
 
-function syncOrders(){
-  $("#data").empty();
-  shops.forEach(async function(shop){
-    if(shop.type == localStorage["shopType"]){
-      let response = await fetch(fleuraOrdersURL + "&shop=" + shop.id,fetchOptions).catch();
+// Function to auto-sync orders
+async function autoSyncOrders() {
+  for (const shop of shops) {
+    if (shop.type === localStorage["shopType"]) {
+      try {
+        let response = await fetchOrdersForShop(shop);
+        let orders = await response.json();
 
-      //if not logged in, status is 439
-      if(response.status == 439){
-        await login(shop);
-        response = await fetch(fleuraOrdersURL + "&shop=" + shop.id,fetchOptions);
-      }
-      let orders = await response.json();
-      let resTemplates = await fetch("templates.htm");
-      let templates = await resTemplates.text();
-      template = $(templates).filter('#tpl-order').html();
-      myOrders = orders.closedOrders.concat(orders.openOrders);
-      if(validateOrderDate())
-        myOrders = myOrders.filter(function(order){
-          return order.date.date == localStorage["orderDate"];
-        });
-      if(Array.isArray(myOrders) && myOrders.length){
-        $("#data").append("<div class='container'>");
-        $("#data").append("<h4>" + shop.title + "</h4>");
-        $('#data').append(Mustache.render(template,{orders:myOrders,shop:shop.title}));
-        $("#data").append("</div>");
-      }
-    }
-  })
-}
-
-function autoSyncOrders(){
-  shops.forEach(async function(shop){
-    if(shop.type == localStorage["shopType"]){
-      let response = await fetch(fleuraOrdersURL + "&shop=" + shop.id,fetchOptions);
-      
-      //if not logged in, status is 439
-      if(response.status == 439){
-        await login(shop);
-        response = await fetch(fleuraOrdersURL + "&shop=" + shop.id,fetchOptions);
-      }
-
-      let orders = await response.json();
-
-      myOrders = orders.closedOrders.concat(orders.openOrders);
-
-      if(validateOrderDate()){
-        myOrders = myOrders.filter(function(order){
-          var foundOrder = oldOrders.find(function(oldOrder){
-            return oldOrder.id == this;
-          },order.id)
-
-          if(foundOrder != undefined)
-            return order.date.date == localStorage["orderDate"] &&
-                   (order.variantCount != foundOrder.variantCount || 
-                    order.totalPrice != foundOrder.totalPrice);
-          else
-            return order.date.date == localStorage["orderDate"];  
-        });
-
-        if(myOrders.length){
-          oldOrders = [];
-
-          myOrders.forEach(async function(order){
-            fetch(fleuraOrderURL + "&order=" + order.id,fetchOptions)
-            .then(resp => resp.json())
-            .then(data => {
-              makeRequest(data,"order");
-              oldOrders.push(data.order);
-            })
-            .catch((error) => {
-              console.log("Error while syncing to google drive: " + error);
-            });
+        let myOrders = [...orders.closedOrders, ...orders.openOrders];
+        if (validateOrderDate()) {
+          myOrders = myOrders.filter(order => {
+            const foundOrder = oldOrders.find(oldOrder => oldOrder.id === order.id);
+            return foundOrder
+              ? order.date.date === localStorage["orderDate"] &&
+                (order.variantCount !== foundOrder.variantCount || order.totalPrice !== foundOrder.totalPrice)
+              : order.date.date === localStorage["orderDate"];
           });
+
+          if (myOrders.length) {
+            oldOrders.length = 0; // Clear old orders
+            for (const order of myOrders) {
+              fetch(`${fleuraOrderURL}&order=${order.id}`, fetchOptions)
+                .then(resp => resp.json())
+                .then(data => {
+                  makeRequest(data, "order");
+                  oldOrders.push(data.order);
+                })
+                .catch(error => console.error("Error syncing to Google Drive:", error));
+            }
+          }
         }
+      } catch (error) {
+        console.error(`Error auto-syncing orders for shop ${shop.title}:`, error);
       }
     }
-  })
+  }
 }
 
-function validateOrderDate(){
-  return localStorage["orderDate"] != undefined && localStorage["orderDate"] != "";
+// Function to validate order date
+function validateOrderDate() {
+  return localStorage["orderDate"] && localStorage["orderDate"] !== "";
 }
 
-async function login(shop){
-  //load empty fetchOptionsLogin then set credentials for specific shop
-  fOptions = fetchOptionsLogin;
-  fOptions.body = shop.credentials;
-
-  //login
-  await fetch(fleuraLoginURL,fOptions);
+// Function to login to a shop
+async function login(shop) {
+  const options = { ...fetchOptionsLogin, body: JSON.stringify(shop.credentials) };
+  await fetch(fleuraLoginURL, options);
 }
 
+// Function to make a request to Google Apps Script
+function makeRequest(data, requestType) {
+  const url = `https://script.google.com/macros/s/AKfycbwgxD39YH50DphH2lBaGVE-dTfndofB_CxR4623URCfJNc89dmgdr5G1aBrTviWceJE/exec?requestType=${requestType}`;
+  $.post(url, JSON.stringify(data), response => console.log("Response:", response), "text");
+}
